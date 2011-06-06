@@ -1,0 +1,18 @@
+WHAT IS THIS?
+- This is meant to help people (like me) that use both Hamster Applet (Gnome Time Tracker) and Redmine to keep trace of activities done.
+
+HOW I CAN USE IT
+- toDo
+
+USAGE
+1) Clone the repository: git clone git://github.com/shaftoe/redminetimesync.git
+2) Edit redminetimesync.config: it's an INI-like file that needs three parameters:
+
+db: /home/<your_username>/.local/share/hamster-applet/hamster.db
+url: https://projects.devsum.it
+key: <your_redmine_api_key_here>
+
+where "db" is the full path to your hamster applet (SQLite 3) database, "url" is the URL of your Redmine (>= v1.1) and
+"key" is the Redmine' API key
+
+3) run the python script: ./redminetimesync.py
