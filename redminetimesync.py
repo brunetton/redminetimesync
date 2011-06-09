@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/python
 import sqlite3
 import datetime
 import os
@@ -8,8 +8,11 @@ from xml.dom import minidom
 from redmine import Redmine
 
 def getDate():
-    '''Returns date for today formatted in isoformat'''
+    '''If there's no CLI parameter, returns date for today formatted in isoformat
+    otherwise returns yesterday'''
     date = datetime.date.today()
+    if len(sys.argv) == 2 and sys.argv[1] == "yesterday":
+        date = date - datetime.timedelta(1)
     return date.isoformat()
 
 def fetchParametersFromFile(configFileName='redminetimesync.config'):
@@ -84,4 +87,5 @@ def syncToRedmine():
             print("Sync to %s [OK]" % configProperties['url'])
     else: print("Today no time entries to send... have you been lazy?")
 
-if __name__ == '__main__': syncToRedmine()
+if __name__ == '__main__':
+    syncToRedmine()
