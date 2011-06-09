@@ -63,12 +63,14 @@ def calDuration(t2,t1):
 
 def generateXml(refinedIssues):
     '''Takes time entries and generate an xml good for Redmine APIs
-    Returns a string with the parsable XML'''
+    Returns a string with the parsable XML
+    Cfr: http://www.redmine.org/projects/redmine/wiki/Rest_TimeEntries'''
     myxml = []
+    date = getDate()
     for issue in refinedIssues:
         comment = ""
         if issue[3]: comment = issue[3] 
-        myxml.append('<time_entry><issue_id>%s</issue_id><hours>%s</hours><comments>%s</comments></time_entry>' % (issue[0], calDuration(issue[2],issue[1]), comment))
+        myxml.append('<time_entry><issue_id>%s</issue_id><spent_on>%s</spent_on><hours>%s</hours><comments>%s</comments></time_entry>' % (issue[0], date, calDuration(issue[2],issue[1]), comment))
     return myxml
 
 def syncToRedmine():
