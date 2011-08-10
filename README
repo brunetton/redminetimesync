@@ -15,4 +15,5 @@ key: <your_redmine_api_key_here>
 where "db" is the full path to your hamster applet (SQLite 3) database, "url" is the URL of your Redmine (>= v1.1) and
 "key" is the Redmine' API key
 
-3) run the python script: ./redminetimesync.py [yesterday]
+3) run the python script: ./redminetimesync.py
+With no parameter, it will sync time entries for today; if you want to sync past days, add an integer as parameter (e.g. "./redminetimesync.py 1" for yesteday, "./redminetimesync.py 3" for 3 days ago, etc)

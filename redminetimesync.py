@@ -8,11 +8,11 @@ from xml.dom import minidom
 from redmine import Redmine
 
 def getDate():
-    '''If there's no CLI parameter, returns date for today formatted in isoformat
-    otherwise returns yesterday'''
+    '''If there's no CLI parameter, returns date for today formatted in isoformat,
+    otherwise returns today minus the parameter (integer)'''
     date = datetime.date.today()
-    if len(sys.argv) == 2 and sys.argv[1] == "yesterday":
-        date = date - datetime.timedelta(1)
+    if len(sys.argv) == 2:
+        date = date - datetime.timedelta( int(sys.argv[1]) )
     return date.isoformat()
 
 def fetchParametersFromFile(configFileName='redminetimesync.config'):
