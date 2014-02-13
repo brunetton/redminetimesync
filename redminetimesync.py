@@ -30,7 +30,7 @@ def fetchFromDatabase(dataFile, date):
     Fetch data from an SQLITE3 database
     Returns an iterable object with SELECT result'''
     _date = ("%"+getDate()+"%", "%"+getDate()+"%") # check that we get just today
-    connection = sqlite3.connect(dataFile)
+    connection = sqlite3.connect(os.path.expanduser(dataFile))
     dbCursor = connection.cursor()
     dbCursor.execute("""SELECT
             activities.name,facts.start_time,facts.end_time,facts.description
