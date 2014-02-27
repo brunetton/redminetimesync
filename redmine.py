@@ -143,17 +143,24 @@ class Redmine:
 		else:
 			request = urllib2.Request( fullUrl + urldata )
 		# get the data and return XML object
-		if objXML:
-			request.add_header('Content-Type', 'text/xml')
-			response = urllib2.urlopen( request, objXML.toxml() )			
-		else:
-			response = urllib2.urlopen( request )
-		
 		try:
-			return minidom.parse( response )
-		except:
-			return response.read()
-	
+			if objXML:
+				request.add_header('Content-Type', 'text/xml')
+				response = urllib2.urlopen( request, objXML.toxml() )
+			else:
+				response = urllib2.urlopen( request )
+		except urllib2.HTTPError, error:
+			print "\n\n----------------\nServer error {} : {}".format(error.code, error.read())
+			print "Request : POST on {}".format(fullUrl)
+			if objXML:
+				print "Datas :\n{}".format(objXML.toprettyxml())
+			print "----------------"
+		else:
+			try:
+				return minidom.parse( response )
+			except:
+				return response.read()
+
 	def get(self, page, parms=None ):
 		'''Gets an XML object from the server - used to read Redmine items.'''
 		return self.open( page, parms )

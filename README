@@ -1,19 +1,29 @@
 WHAT IS THIS?
 - This is meant to help people (like me) that use both Hamster Applet (Gnome Time Tracker) and Redmine to keep trace of activities done.
 
-HOW I CAN USE IT
-- toDo
+
+PREREQUISITES
+* Redmine >= v1.1
+* Python on your local machine
+
+
+INSTALLATION
+1) Clone the repository: git clone git://github.com/shaftoe/redminetimesync.git
+2) Edit redminetimesync.config: it's an INI-like file that needs two parameters:
+
+url: your Redmine public url
+key: your Redmine API key
+
+You can find your API key on your account page ( /my/account ) when logged in, on the right-hand pane of the default layout.
+You'll have to enable Redmine REST API in Administration -> Settings -> Authentication
+
 
 USAGE
-1) Clone the repository: git clone git://github.com/shaftoe/redminetimesync.git
-2) Edit redminetimesync.config: it's an INI-like file that needs three parameters:
+1) Log activities in Hamster, precising Redmine issue ID. Valid log entries are :
+'#134: Adding some interesting stuff'
+'Fix #243'
+'Adding logging output (#132)'
 
-db: /home/<your_username>/.local/share/hamster-applet/hamster.db
-url: https://projects.devsum.it
-key: <your_redmine_api_key_here>
-
-where "db" is the full path to your hamster applet (SQLite 3) database, "url" is the URL of your Redmine (>= v1.1) and
-"key" is the Redmine' API key
-
-3) run the python script: ./redminetimesync.py
-With no parameter, it will sync time entries for today; if you want to sync past days, add an integer as parameter (e.g. "./redminetimesync.py 1" for yesteday, "./redminetimesync.py 3" for 3 days ago, etc)
+2) run the python script: ./redminetimesync.py
+- with no parameter, it will sync time entries for today
+- if you want to sync past days, add an integer as parameter (e.g. "./redminetimesync.py 1" for yesteday, "./redminetimesync.py 3" for 3 days ago, etc)
