@@ -18,8 +18,9 @@ INSTALLATION
 1. Clone the repository
  
 2. Edit **redminetimesync.config**: it's an INI-like file that needs two parameters:
-  url: your Redmine public url
-  key: your Redmine API key
+
+ - url: your Redmine public url
+ - key: your Redmine API key
 
   nb: you can find your API key on your Redmine account page (/my/account) when logged in, on the right-hand pane of the default layout.
   You'll have to enable Redmine REST API in Administration -> Settings -> Authentication
