@@ -9,6 +9,11 @@ from xml.dom import minidom
 from redmine import Redmine
 
 
+def print_(string):
+    '''Print the string without end line break'''
+    print(string),  # Here the end-line coma is intended
+    sys.stdout.flush()
+
 def fetchParametersFromFile(configFileName='redminetimesync.config'):
     '''Takes parameters from an INI file passed via configFileName paramenter
     and returns an ordered dictionary with everything into the custom section'''
@@ -84,8 +89,7 @@ def syncToRedmine(time_entries, sync_date):
     '''Gathers issues in XML format and push them to Redmine instance'''
     # Synch starts
     xml_list = generateXml(time_entries, sync_date)
-    print('-> Connecting to Redmine...'),
-    sys.stdout.flush()
+    print_('-> Connecting to Redmine...')
     try:
         redmine_url = configProperties.get('redmine', 'url')
         myredmine = Redmine(redmine_url, configProperties.get('redmine', 'key'))
@@ -93,13 +97,11 @@ def syncToRedmine(time_entries, sync_date):
         print("\nCannot connect to Redmine, check out credentials or connectivity")
     else:
         print('[OK]')
-        print("-> Sending entries"),
-        sys.stdout.flush()
+        print_("-> Sending entries")
         for entry in xml_list:
             xmlDocument = minidom.parseString(entry)
             myredmine.post("time_entries.xml", xmlDocument)
-            print '.',
-            sys.stdout.flush()
+            print_('.')
 
 
 if __name__ == '__main__':
