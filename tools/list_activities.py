@@ -3,15 +3,17 @@ import sqlite3
 import os
 import sys
 import ConfigParser
-from redmine import Redmine
 import urllib2
+
+sys.path.append('..')
+from redmine import Redmine
 
 
 def fetchParametersFromFile(configFileName='redminetimesync.config'):
     '''Takes parameters from an INI file passed via configFileName paramenter
     and returns an ordered dictionary with everything into the custom section'''
     global configProperties
-    configPath = os.path.join(os.path.split(os.path.abspath(sys.argv[0]))[0],configFileName)
+    configPath = os.path.join(os.path.split(os.path.abspath(sys.argv[0]))[0], '..', configFileName)
     config = ConfigParser.ConfigParser() # fetch parameters from a config file
     config.read(configPath)
     configProperties = config
@@ -28,7 +30,7 @@ if __name__ == '__main__':
         myredmine = Redmine(redmine_url, configProperties.get('redmine', 'key'))
     except:
         print("\nCannot connect to Redmine, check out credentials or connectivity")
-        return
+        sys.exit()
 
     print('[OK]')
     print("-> Sending request"),
@@ -40,6 +42,5 @@ if __name__ == '__main__':
         if e.code==404:
             print '[404] Error !'
             print 'Make sure your version of Redmine is >= 2.2.'
-        return
 
     #TODO
