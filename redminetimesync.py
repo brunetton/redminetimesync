@@ -115,7 +115,7 @@ def generateXml(time_entries, date):
                 date=date,
                 issue_id=time_entry['issue_id'],
                 duration=time_entry['duration'],
-                comment=empty_if_none(time_entry['comment']),
+                comment=empty_if_none(time_entry['comment']).encode("utf-8"),
                 activity_id=empty_if_none(time_entry['activity_id'])
             )
         )

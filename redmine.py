@@ -146,7 +146,7 @@ class Redmine:
 		try:
 			if objXML:
 				request.add_header('Content-Type', 'text/xml')
-				response = urllib2.urlopen( request, objXML.toxml() )
+				response = urllib2.urlopen( request, objXML.toxml().encode("utf-8"))
 			else:
 				response = urllib2.urlopen( request )
 		except urllib2.HTTPError, error:
