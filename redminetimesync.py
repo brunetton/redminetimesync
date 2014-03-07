@@ -80,8 +80,8 @@ def getTimeEntries(time_entries, verbose=True):
             else:
                 print_(u'** Warning : unmatched category "{}"'.format(category_name))
                 if default_activity_id is not None:
-                    print u', assignated to default Redmine activity ID : {}'.format(activity_id)
                     activity_id = default_activity_id
+                    print u', assignated to default Redmine activity ID : {}'.format(default_activity_id)
                 else:
                     activity_id = None
                 print '\n'
