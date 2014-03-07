@@ -162,7 +162,7 @@ if __name__ == '__main__':
         print("\nNo time entries to send... have you been lazy?")
         sys.exit()
 
-    print "\nPress ENTER to synchronize those tasks ...",
+    print_("\nPress ENTER to synchronize those tasks ...")
     try:
         raw_input('')
     except KeyboardInterrupt:
