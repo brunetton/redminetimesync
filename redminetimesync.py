@@ -53,7 +53,7 @@ def calDuration(t2,t1):
 def getTimeEntries(time_entries, verbose=True):
     '''Return an array of explicit associative array for times entries, filtering out
     entries that do not match issue_id_regexp defined in config file'''
-    categories_association = yaml.load(open("/home/bruno/dev/redminetimesync/activities.config", 'r'))
+    categories_association = yaml.load(open("activities.config", 'r'))
     if configProperties.has_option('default', 'redmine_default_activity_id'):
         default_activity_id = configProperties.get('default', 'redmine_default_activity_id')
     else:
