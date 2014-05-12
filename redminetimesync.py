@@ -59,9 +59,12 @@ def getTimeEntries(time_entries, verbose=True):
     else:
         default_activity_id = None
     array = []
+    total_duration = 0
     for time_entry in time_entries:
         label = time_entry[0]
         duration = calDuration(time_entry[2], time_entry[1])
+        total_duration += duration
+        comment = time_entry[3]
         # Try to find Redmine issue IDs from label using regexp defined in config file
         match = re.match(configProperties.get('default', 'issue_id_regexp'), label)
         if match:
@@ -72,6 +75,8 @@ def getTimeEntries(time_entries, verbose=True):
         print u"* [{duration}h] #{id} : {label}".format(
             duration=duration, id=issue_id, label=label
         )
+        if comment is not None:
+            print u"  {}".format(comment)
         # Try to find activity_id
         category_name = time_entry[4]
         if category_name is not None and categories_association is not None:
@@ -96,9 +101,10 @@ def getTimeEntries(time_entries, verbose=True):
             'label': label,
             'issue_id': issue_id,
             'duration': duration,
-            'comment': time_entry[3],
+            'comment': comment,
             'activity_id': activity_id
             })
+    print "\nTotal : {}h".format(total_duration)
     return array
 
 def generateXml(time_entries, date):
