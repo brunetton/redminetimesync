@@ -104,7 +104,8 @@ def getTimeEntries(time_entries, verbose=True):
             'comment': comment,
             'activity_id': activity_id
             })
-    print "\nTotal : {}h".format(total_duration)
+    if total_duration > 0:
+        print "\nTotal : {}h".format(total_duration)
     return array
 
 def generateXml(time_entries, date):
