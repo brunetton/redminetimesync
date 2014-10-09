@@ -11,4 +11,4 @@ issue_id_regexp: .*# ?(\d+)
 
 # Activity id sent to each time entry (uncomment this if you have an error in Redmine due to undefined default activity)
 # See activities.config file for an enhanced control upon activities
-;redmine_default_activity_id: 9
+#redmine_default_activity_id: 9

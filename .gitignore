@@ -1,3 +1,5 @@
 *~
 *.pyc
 git_ignored/
+activities.config
+redminetimesync.config

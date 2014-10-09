@@ -16,8 +16,8 @@ INSTALLATION
 ------------
 
 1. Clone the repository
- 
-2. Edit **redminetimesync.config**: it's an INI-like file that needs two parameters:
+
+2. Copy `redminetimesync.config.tpl` to `redminetimesync.config` : it's an INI-like file that needs two parameters:
 
  - url: your Redmine public url
  - key: your Redmine API key
@@ -42,6 +42,9 @@ ADVANCED CONFIGURATION
 ----------------------
 
 ### Activities
+
+Activities are defined in `activities.config` file. You can copy sample file `activities.config.tpl` (and rename it)
+and adjust it for your needs.
 
 #### Default activity
 
