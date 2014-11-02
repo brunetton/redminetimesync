@@ -1,14 +1,18 @@
 #!/usr/bin/python
-import sqlite3
-import datetime
-import os
-import sys
 import ConfigParser
+import datetime
+import sqlite3
+import math
+import moment
+import os
 import re
+import sys
 from xml.dom import minidom
 import yaml
 
 from redmine import Redmine
+
+DB_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH:mm:ss'
 
 
 def print_(string):
@@ -30,7 +34,7 @@ def fetchFromDatabase(dataFile, date):
     '''Following http://docs.python.org/library/sqlite3.html
     Fetch data from an SQLITE3 database
     Returns an iterable object with SELECT result'''
-    _date = "%{}%".format(date)  # check that we get just today
+    _date = "%{}%".format(date)
     connection = sqlite3.connect(os.path.expanduser(dataFile))
     dbCursor = connection.cursor()
     dbCursor.execute("""SELECT
@@ -39,16 +43,8 @@ def fetchFromDatabase(dataFile, date):
             JOIN facts ON activities.id = facts.activity_id
             LEFT JOIN categories ON activities.category_id = categories.id
             WHERE facts.start_time LIKE ?
-            AND facts.end_time LIKE ?""", (_date, _date))
+            ORDER BY start_time""", (_date,))
     return dbCursor
-
-def calDuration(t2,t1):
-    '''calculate delta between two timestamps
-    Return an INT with the hour value'''
-    t1 = t1.split()[1].split(":")
-    t2 = t2.split()[1].split(":")
-    duration = datetime.timedelta(0,int(t2[2]),0,0,int(t2[1]),int(t2[0])) - datetime.timedelta(0,int(t1[2]),0,0,int(t1[1]),int(t1[0]))
-    return round(duration.seconds/3600.0, 1)
 
 def getTimeEntries(time_entries, verbose=True):
     '''Return an array of explicit associative array for times entries, filtering out
@@ -62,8 +58,10 @@ def getTimeEntries(time_entries, verbose=True):
     total_duration = 0
     for time_entry in time_entries:
         label = time_entry[0]
-        duration = calDuration(time_entry[2], time_entry[1])
+        duration = (moment.date(time_entry[2], DB_TIMESTAMP_FORMAT) - moment.date(time_entry[1], DB_TIMESTAMP_FORMAT)).seconds / 3600.
+        assert duration > 0, "Duration for entry {} is not >0: {}".format(label, duration)
         total_duration += duration
+        duration = round(duration, 1)
         comment = time_entry[3]
         # Try to find Redmine issue IDs from label using regexp defined in config file
         match = re.match(configProperties.get('default', 'issue_id_regexp'), label)
@@ -72,8 +70,8 @@ def getTimeEntries(time_entries, verbose=True):
         else:
             print u'** Warning : ignoring entry "{}" : not able to find issue ID'.format(label)
             continue
-        print u"* [{duration}h] #{id} : {label}".format(
-            duration=duration, id=issue_id, label=label
+        print u"* [{duration}h #{id}]: {label}".format(
+            duration=round(duration, 1), id=issue_id, label=label
         )
         if comment is not None:
             print u"  {}".format(comment)
@@ -105,8 +103,8 @@ def getTimeEntries(time_entries, verbose=True):
             'activity_id': activity_id
             })
     if total_duration > 0:
-        print "\nTotal : {}h".format(total_duration)
-    return array
+        print "\nTotal : {}h".format(round(total_duration, 1))
+    return array, total_duration
 
 def generateXml(time_entries, date):
     '''Takes time entries and generate an xml good for Redmine APIs
@@ -128,7 +126,7 @@ def generateXml(time_entries, date):
         )
     return myxml
 
-def syncToRedmine(time_entries, sync_date):
+def syncToRedmine(time_entries, sync_date, raise_exceptions=False):
     '''Gathers issues in XML format and push them to Redmine instance'''
     # Synch starts
     xml_list = generateXml(time_entries, sync_date)
@@ -137,7 +135,10 @@ def syncToRedmine(time_entries, sync_date):
         redmine_url = configProperties.get('redmine', 'url')
         myredmine = Redmine(redmine_url, configProperties.get('redmine', 'key'))
     except:
-        print("\nCannot connect to Redmine, check out credentials or connectivity")
+        msg = "\nCannot connect to Redmine, check out credentials or connectivity"
+        print msg
+        if raise_exceptions:
+            raise msg
         return
     else:
         print('[OK]')
@@ -149,31 +150,54 @@ def syncToRedmine(time_entries, sync_date):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        if len(sys.argv) == 2:
-            sync_date = datetime.date.today() - datetime.timedelta(int(sys.argv[1]))
-            print "List of {} activities :\n".format(sync_date.strftime("%A %Y-%m-%d"))
-        else:
-            print "Usage : {} [days ahead]".format(sys.argv[0])
-            sys.exit()
-    else:
-        sync_date = datetime.date.today()
-        print "List of today activities :"
+    # if len(sys.argv) > 1:
+    #     if len(sys.argv) == 2:
+    #         sync_date = datetime.date.today() - datetime.timedelta(int(sys.argv[1]))
+    #         print "List of {} activities :\n".format(sync_date.strftime("%A %Y-%m-%d"))
+    #     else:
+    #         print "Usage : {} [days ahead]".format(sys.argv[0])
+    #         sys.exit()
+    # else:
+    #     sync_date = datetime.date.today()
+    #     print "List of today activities :"
 
-    sync_date = sync_date.isoformat()
+    # sync_date = sync_date.isoformat()
     configProperties = fetchParametersFromFile()
     db_filename = configProperties.get('default', 'db')
-    time_entries = getTimeEntries(fetchFromDatabase(db_filename, sync_date))
+    # time_entries = getTimeEntries(fetchFromDatabase(db_filename, sync_date))
 
-    if not time_entries:
-        print("\nNo time entries to send... have you been lazy?")
-        sys.exit()
+    # if not time_entries:
+    #     print("\nNo time entries to send... have you been lazy?")
+    #     sys.exit()
 
-    print_("\nPress ENTER to synchronize those tasks ...")
-    try:
-        raw_input('')
-    except KeyboardInterrupt:
-        print "\n"
-        sys.exit()
+    # print_("\nPress ENTER to synchronize those tasks ...")
+    # try:
+    #     raw_input('')
+    # except KeyboardInterrupt:
+    #     print "\n"
+    #     sys.exit()
+    #
+    # syncToRedmine(time_entries, sync_date)
 
-    syncToRedmine(time_entries, sync_date)
+    boom
+    start_date = moment.date('2014-10-01')
+    end_date = moment.date('2014-10-30')
+    date = moment.date(start_date).date
+    total_time = 0
+    total_sent_time = 0
+    while date <= end_date:
+        formatted_date = date.format('YYYY-MM-DD')
+        print '*' * 30
+        print formatted_date
+        print '*' * 30
+        time_entries, day_total = getTimeEntries(fetchFromDatabase(db_filename, formatted_date))
+        total_time += day_total
+        if time_entries:
+            syncToRedmine(time_entries, formatted_date, raise_exceptions=True)
+            sent_time = math.fsum(d['duration'] for d in time_entries)
+            total_sent_time += sent_time
+        date = date.add(days=1)
+        print
+    print
+    print
+    print "---> TOTAL: {}h found in Hamster - {}h sent to Redmine".format(round(total_time, 1), total_sent_time)
