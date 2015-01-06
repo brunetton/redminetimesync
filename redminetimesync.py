@@ -1,18 +1,45 @@
 #!/usr/bin/python
-import ConfigParser
+
+from ConfigParser import RawConfigParser
+from requests import ConnectionError
 import datetime
 import sqlite3
 import math
-import moment
 import os
+from pprint import pformat
 import re
 import sys
-from xml.dom import minidom
 import yaml
 
-from redmine import Redmine
+from docopt import docopt    # http://docopt.org/
+import moment                # https://pypi.python.org/pypi/moment
+from redmine import Redmine  # https://pypi.python.org/pypi/python-redmine
+from redmine.exceptions import AuthError, ResourceNoFieldsProvidedError
 
+
+
+ACTIVITIES_CONFIG_FILE = 'activities.config'
+CONFIG_FILE = 'redminetimesync.config'
 DB_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH:mm:ss'
+
+DOC = '''
+Redmine / Hamster times entries synchronization
+
+Usage:
+    {self_name} from <start> [(to <stop>)] [options]
+    {self_name} <date> [options]
+    {self_name} -h | --help
+
+Options:
+    -a --auto           Do not ask for manual validation for each day, sync all days in given interval
+    -n --no-date-check  Do not ask for manual date validation at begining
+
+Note: start, stop and date could be :
+    - a date: ("12/10", "12/10/15", ...)
+      -> check for config file to change dates formats
+    - a number of days ago: ("3" means 3 days ago, "1" means yesterday, ...)
+      -> 0 means today
+'''
 
 
 def print_(string):
@@ -20,41 +47,42 @@ def print_(string):
     print(string),  # Here the end-line coma is intended
     sys.stdout.flush()
 
-def fetchParametersFromFile(configFileName='redminetimesync.config'):
-    '''Takes parameters from an INI file passed via configFileName paramenter
-    and returns an ordered dictionary with everything into the custom section'''
-    global configProperties
-    configPath = os.path.join(os.path.split(os.path.abspath(sys.argv[0]))[0],configFileName)
-    config = ConfigParser.ConfigParser() # fetch parameters from a config file
-    config.read(configPath)
-    configProperties = config
-    return configProperties
+def getTimeEntries(date, config):
+    '''Reads Sqlite Redmine DB file and return an array of explicit associative array for times entries,
+    filtering out entries that do not match issue_id_regexp defined in config file
+    Returns:
+        - activities_array:
+            array of dicts with 'description', 'label', 'issue_id', 'duration', 'comment', 'activity_id' keys
+        - total_duration: sum of all activities duration
+    '''
 
-def fetchFromDatabase(dataFile, date):
-    '''Following http://docs.python.org/library/sqlite3.html
-    Fetch data from an SQLITE3 database
-    Returns an iterable object with SELECT result'''
-    _date = "%{}%".format(date)
-    connection = sqlite3.connect(os.path.expanduser(dataFile))
-    dbCursor = connection.cursor()
-    dbCursor.execute("""SELECT
+    def fetchFromDatabase(db_filename, date):
+        '''Fetch data from an SQLITE3 database
+        Returns an iterable object with SELECT result'''
+        _date = "%{}%".format(date.format('YYYY-MM-DD'))
+        connection = sqlite3.connect(os.path.expanduser(db_filename))
+        dbCursor = connection.cursor()
+        dbCursor.execute("""SELECT
             activities.name,facts.start_time,facts.end_time,facts.description,categories.name
             FROM activities
             JOIN facts ON activities.id = facts.activity_id
             LEFT JOIN categories ON activities.category_id = categories.id
             WHERE facts.start_time LIKE ?
-            ORDER BY start_time""", (_date,))
-    return dbCursor
+            ORDER BY start_time""", (_date,)
+        )
+        return dbCursor
 
-def getTimeEntries(time_entries, verbose=True):
-    '''Return an array of explicit associative array for times entries, filtering out
-    entries that do not match issue_id_regexp defined in config file'''
-    categories_association = yaml.load(open("activities.config", 'r'))
-    if configProperties.has_option('default', 'redmine_default_activity_id'):
-        default_activity_id = configProperties.get('default', 'redmine_default_activity_id')
+    db_filename = config.get('default', 'db')
+    time_entries = fetchFromDatabase(db_filename, date)
+    if os.path.exists(ACTIVITIES_CONFIG_FILE):
+        categories_association = yaml.load(open(ACTIVITIES_CONFIG_FILE, 'r'))
+    else:
+        categories_association = None
+    if config.has_option('default', 'redmine_default_activity_id'):
+        default_activity_id = config.get('default', 'redmine_default_activity_id')
     else:
         default_activity_id = None
-    array = []
+    activities = []
     total_duration = 0
     for time_entry in time_entries:
         label = time_entry[0]
@@ -64,7 +92,7 @@ def getTimeEntries(time_entries, verbose=True):
         duration = round(duration, 1)
         comment = time_entry[3]
         # Try to find Redmine issue IDs from label using regexp defined in config file
-        match = re.match(configProperties.get('default', 'issue_id_regexp'), label)
+        match = re.match(config.get('default', 'issue_id_regexp'), label)
         if match:
             issue_id = match.group(1)
         else:
@@ -94,110 +122,189 @@ def getTimeEntries(time_entries, verbose=True):
             else:
                 activity_id = None
 
-        array.append({
+        activities.append({
             'description': label,
             'label': label,
             'issue_id': issue_id,
             'duration': duration,
             'comment': comment,
             'activity_id': activity_id
-            })
+        })
     if total_duration > 0:
         print "\nTotal : {}h".format(round(total_duration, 1))
-    return array, total_duration
+    return activities, total_duration
 
-def generateXml(time_entries, date):
-    '''Takes time entries and generate an xml good for Redmine APIs
-    Returns a string with the parsable XML
-    Cfr: http://www.redmine.org/projects/redmine/wiki/Rest_TimeEntries'''
-
-    def empty_if_none(string):
-        return string if string is not None else ''
-
-    myxml = []
-    for time_entry in time_entries:
-        myxml.append('<time_entry><issue_id>{issue_id}</issue_id><spent_on>{date}</spent_on><hours>{duration}</hours><comments>{comment}</comments><activity_id>{activity_id}</activity_id></time_entry>'.format(
-                date=date,
-                issue_id=time_entry['issue_id'],
-                duration=time_entry['duration'],
-                comment=empty_if_none(time_entry['comment']).encode("utf-8"),
-                activity_id=empty_if_none(time_entry['activity_id'])
-            )
-        )
-    return myxml
-
-def syncToRedmine(time_entries, sync_date, raise_exceptions=False):
-    '''Gathers issues in XML format and push them to Redmine instance'''
-    # Synch starts
-    xml_list = generateXml(time_entries, sync_date)
-    print_('-> Connecting to Redmine...')
+def syncToRedmine(time_entries, date, redmine):
+    '''Push all given time_entries to Redmine'''
+    print_("-> Sending entries")
     try:
-        redmine_url = configProperties.get('redmine', 'url')
-        myredmine = Redmine(redmine_url, configProperties.get('redmine', 'key'))
-    except:
-        msg = "\nCannot connect to Redmine, check out credentials or connectivity"
-        print msg
-        if raise_exceptions:
-            raise msg
-        return
-    else:
-        print('[OK]')
-        print_("-> Sending entries")
-        for entry in xml_list:
-            xmlDocument = minidom.parseString(entry)
-            myredmine.post("time_entries.xml", xmlDocument)
+        for time_entry_infos in time_entries:
+            time_entry = redmine.time_entry.create(
+                spent_on=date.date,  # converts Moment date to Datetime
+                issue_id=time_entry_infos['issue_id'],
+                hours=time_entry_infos['duration'],
+                activity_id=time_entry_infos['activity_id'],
+                comments=time_entry_infos['comment']
+            )
+            # Send this activity to Redmine
+            try:
+                time_entry.save()
+            except ResourceNoFieldsProvidedError:
+                # UGLY, but while waiting for https://github.com/maxtepkeev/python-redmine/issues/70
+                print_('.')
+                continue;
             print_('.')
+    except ConnectionError as e:
+        print "Connection Error: {}".format(e.message)
+
+def parse_date(datestr, date_formats):
+    '''Try all dates formats defined in date_formats array and returns a Moment object representing that date.
+    If format doesn't containt year, default assign current year to returned date (instead of 1900).
+    Returns: Moment object or None
+    '''
+    assert datestr
+    assert date_formats
+    for date_format in date_formats:
+        date_format = date_format.strip()
+        try:
+            date = moment.date(datestr, date_format)
+            if date_format.find('Y') == -1:
+                # date format doesn't containts year
+                current_year = datetime.date.today().year
+                return date.replace(year=current_year)
+            else:
+                return date
+        except ValueError:
+            pass
+    return None
+
+
+def parse_command_line_args():
+    '''Parse command line args and returns args, from_date, to_date or for_date Moment dates.
+    nb: if from_date is not None; to_date could be None or not.
+    '''
+    def quit_with_parse_date_error(datestr, date_formats):
+        print "Error while parsing date '{}'.\nAccepted formats defined in config file are: {}."\
+              .format(datestr, date_formats)
+        sys.exit(-1)
+    def parse_date_or_days_ahead(datestr, config, quit_if_none=False):
+        '''Returns a moment date corresponding to given date, or days ahead number.
+        quit_if_none: quit programm if no date parsed
+
+        parse_date_or_days_ahead('4/10/2014') should return corresponding moment, if that format is defined in config file
+        parse_date_or_days_ahead('1') should return the date of yesterday
+        '''
+        # Try to find a formatted date
+        date_formats = config.get('default', 'date_formats').split(',')
+        date = parse_date(datestr, date_formats)
+        if date:
+            return date
+        # It's not a date; maybe is it a number corresponding to some days ago
+        if datestr.isdigit():
+            # It's a number, corresponding to some days ago from today. Retun that date
+            return moment.now().subtract(days=int(datestr))
+        if quit_if_none:
+            quit_with_parse_date_error(datestr, date_formats)
+        return None
+
+    args = docopt(DOC.format(self_name=os.path.basename(__file__)))
+    from_date = to_date = for_date = None
+    if args['from']:
+        from_date = parse_date_or_days_ahead(args['<start>'], config, quit_if_none=True)
+    if args['to']:
+        to_date = parse_date_or_days_ahead(args['<stop>'], config)
+    if args['<date>']:
+        for_date = parse_date_or_days_ahead(args['<date>'], config, quit_if_none=True)
+    return args, from_date, to_date, for_date
 
 
 if __name__ == '__main__':
-    # if len(sys.argv) > 1:
-    #     if len(sys.argv) == 2:
-    #         sync_date = datetime.date.today() - datetime.timedelta(int(sys.argv[1]))
-    #         print "List of {} activities :\n".format(sync_date.strftime("%A %Y-%m-%d"))
-    #     else:
-    #         print "Usage : {} [days ahead]".format(sys.argv[0])
-    #         sys.exit()
-    # else:
-    #     sync_date = datetime.date.today()
-    #     print "List of today activities :"
+    # Read config file
+    if not os.path.isfile(CONFIG_FILE):
+        print('Can\'t find config file: {}\nYou can copy template conf file and adapt.'.format(CONFIG_FILE))
+        sys.exit(-1)
 
-    # sync_date = sync_date.isoformat()
-    configProperties = fetchParametersFromFile()
-    db_filename = configProperties.get('default', 'db')
-    # time_entries = getTimeEntries(fetchFromDatabase(db_filename, sync_date))
+    config = RawConfigParser()
+    config.read(CONFIG_FILE)
 
-    # if not time_entries:
-    #     print("\nNo time entries to send... have you been lazy?")
-    #     sys.exit()
+    # Parse command line parameters
+    args, from_date, to_date, for_date = parse_command_line_args()
 
-    # print_("\nPress ENTER to synchronize those tasks ...")
-    # try:
-    #     raw_input('')
-    # except KeyboardInterrupt:
-    #     print "\n"
-    #     sys.exit()
-    #
-    # syncToRedmine(time_entries, sync_date)
+    # Get prefered date format from config file to display dates
+    date_format = config.get('default', 'date_formats')
+    if date_format.find(',') != -1:
+        # More than one format is defined, take first
+        date_format = (date_format.split(',')[0]).strip()
 
-    boom
-    start_date = moment.date('2014-10-01')
-    end_date = moment.date('2014-10-30')
-    date = moment.date(start_date).date
+    # print confirmation to user, to check dates
+    if from_date:
+        if to_date is None:
+            # implicitly takes today for to_date
+            to_date = moment.now()
+            question = "Sync tasks from {} to today (included) ?".format(from_date.format(date_format))
+        else:
+            question = "Sync tasks from {} to {} (included) ?".format(
+                from_date.format(date_format),
+                to_date.format(date_format)
+            )
+    elif for_date:
+        if args['<date>'] == '0':
+            question = "Sync tasks for today ?"
+        elif args['<date>'] == '1':
+            question = "Sync tasks for yesterday ({}) ?".format(for_date.format(date_format))
+        else:
+            question = "Sync tasks for {} ?".format(for_date.format(date_format))
+    assert question
+
+    if not args['--no-date-check']:
+        print question
+        print_("\nPress ENTER to validate ...")
+        try:
+            raw_input('')
+            print "\n"
+        except KeyboardInterrupt:
+            print "\n"
+            sys.exit()
+
+    # Connects to Redmine
+    print_('-> Connecting to Redmine...')
+    redmine = Redmine(config.get('redmine', 'url'), key=config.get('redmine', 'key'))
+    try:
+        redmine.auth()
+    except (AuthError, ConnectionError) as e:
+        print "\nConnection error: {}".format(e.message)
+        sys.exit(-1)
+    print_(' OK')
+    print
+
+    if for_date:
+        # only one date will be parsed
+        from_date = for_date
+        to_date = for_date
     total_time = 0
     total_sent_time = 0
-    while date <= end_date:
-        formatted_date = date.format('YYYY-MM-DD')
-        print '*' * 30
-        print formatted_date
-        print '*' * 30
-        time_entries, day_total = getTimeEntries(fetchFromDatabase(db_filename, formatted_date))
+    date = from_date.clone()
+    while date <= to_date:
+        if not for_date:
+            print "{s} {formatted_date} {s}".format(s='*' * 20, formatted_date=date.format(date_format))
+        # Get time entries from local DB
+        time_entries, day_total = getTimeEntries(date, config)
+        if not time_entries:
+            print("\nNo time entries to send... have you been lazy ?\n\n\n")
+            date = date.add(days=1)
+            continue
+        # Wait for user validation
+        if not args['--auto']:
+            print "\nPress ENTER to synchronize those tasks ...",
+            try:
+                raw_input('')
+            except KeyboardInterrupt:
+                print "\n"
+                sys.exit()
         total_time += day_total
-        if time_entries:
-            syncToRedmine(time_entries, formatted_date, raise_exceptions=True)
-            sent_time = math.fsum(d['duration'] for d in time_entries)
-            total_sent_time += sent_time
+        syncToRedmine(time_entries, date, redmine)
+        sent_time = math.fsum(d['duration'] for d in time_entries)
+        total_sent_time += sent_time
         date = date.add(days=1)
         print
-    print
-    print
-    print "---> TOTAL: {}h found in Hamster - {}h sent to Redmine".format(round(total_time, 1), total_sent_time)
+    print "\n---> TOTAL: {}h found in Hamster - {}h sent to Redmine".format(round(total_time, 1), total_sent_time)
