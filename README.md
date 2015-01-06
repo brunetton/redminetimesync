@@ -34,8 +34,16 @@ USAGE
  - **Adding logging output (#132)**
 
 2. run the python script: **redminetimesync.py**
- - with no parameter, it will sync time entries for today
- - if you want to sync past days, add an integer as parameter (e.g. "*redminetimesync.py 1*" for yesteday, "*redminetimesync.py 3*" for 3 days ago, etc)
+ - to sync one day, just give the date to the script : `redminetimesync.py 10/10/13`
+ - to sync a period, use `from` and `to` arguments : `redminetimesync.py from 10/10/13 to 15/10/13`
+   - -> to sync from a given date until today, you don't need to precise `to` parameter : `redminetimesync.py from 10/10/14`
+
+You can configure dates formats in `redminetimesync.config` file.
+
+Note that all dates parameters can be also replaced by "days ago" parameters :
+ - `redminetimesync.py 1` will sync yesterday work
+ - `redminetimesync.py from 7` will sync last week work (from 7 days ago to today)
+ - `redminetimesync.py from 15 to 7` will sync week before last week work (from 15 days ago to last week)
 
 
 ADVANCED CONFIGURATION
