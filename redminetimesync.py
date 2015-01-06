@@ -139,6 +139,7 @@ def syncToRedmine(time_entries, date, redmine):
     print_("-> Sending entries")
     try:
         for time_entry_infos in time_entries:
+            # Send this activity to Redmine
             time_entry = redmine.time_entry.create(
                 spent_on=date.date,  # converts Moment date to Datetime
                 issue_id=time_entry_infos['issue_id'],
@@ -146,16 +147,10 @@ def syncToRedmine(time_entries, date, redmine):
                 activity_id=time_entry_infos['activity_id'],
                 comments=time_entry_infos['comment']
             )
-            # Send this activity to Redmine
-            try:
-                time_entry.save()
-            except ResourceNoFieldsProvidedError:
-                # UGLY, but while waiting for https://github.com/maxtepkeev/python-redmine/issues/70
-                print_('.')
-                continue;
             print_('.')
     except ConnectionError as e:
         print "Connection Error: {}".format(e.message)
+    print "\n"
 
 def parse_date(datestr, date_formats):
     '''Try all dates formats defined in date_formats array and returns a Moment object representing that date.
