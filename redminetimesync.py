@@ -270,7 +270,7 @@ if __name__ == '__main__':
         print "\nConnection error: {}".format(e.message)
         sys.exit(-1)
     print_(' OK')
-    print
+    print "\n"
 
     if for_date:
         # only one date will be parsed
