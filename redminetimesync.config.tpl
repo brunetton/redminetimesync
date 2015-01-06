@@ -12,6 +12,6 @@ date_formats: DD/MM/YY, DD/MM  ; first format is also used for dates display
 # Regex used to parse Hamster time entry to find out issue ID
 issue_id_regexp: .*# ?(\d+)
 
-# Activity id sent to each time entry (uncomment this if you have an error in Redmine due to undefined default activity)
+# Activity id sent to each time entry (uncomment this if you have an error due to no default activity defined in Redmine)
 # See activities.config file for an enhanced control upon activities
-#redmine_default_activity_id: 9
+#redmine_default_activity_id: 9  ; development
