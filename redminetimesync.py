@@ -31,8 +31,8 @@ Usage:
     {self_name} -h | --help
 
 Options:
-    -a --auto           Do not ask for manual validation for each day, sync all days in given interval
-    -n --no-date-check  Do not ask for manual date validation at begining
+    -a --auto             Do not ask for manual validation for each day, sync all days in given interval
+    -n --no-date-confirm  Do not ask for manual dates interval confirmation at begining
 
 Note: start, stop and date could be :
     - a date: ("12/10", "12/10/15", ...)
@@ -251,7 +251,7 @@ if __name__ == '__main__':
             question = "Sync tasks for {} ?".format(for_date.format(date_format))
     assert question
 
-    if not args['--no-date-check']:
+    if not args['--no-date-confirm']:
         print question
         print_("\nPress ENTER to validate ...")
         try:
