@@ -3,6 +3,7 @@
 from ConfigParser import RawConfigParser
 from requests import ConnectionError
 import datetime
+import getpass
 import sqlite3
 import math
 import os
@@ -263,9 +264,24 @@ if __name__ == '__main__':
             print "\n"
             sys.exit()
 
+    auth_type = 'api_key'
+    if config.has_option('redmine', 'auth_type'):
+        auth_type = config.get('redmine', 'auth_type')
+
     # Connects to Redmine
+    if auth_type == 'api_key':
+        redmine = Redmine(config.get('redmine', 'url'), key=config.get('redmine', 'key'))
+    elif auth_type == 'password':
+        user = config.get('redmine', 'user')
+        password = getpass.getpass('{} Password: '.format(user))
+        redmine = Redmine(config.get('redmine', 'url'), username=user, password=password)
+    else:
+        print('Unknown auth-type: "{}"'.format(auth_type))
+        print('Use one of: key, password.')
+        sys.exit(-1)
+
     print_('-> Connecting to Redmine...')
-    redmine = Redmine(config.get('redmine', 'url'), key=config.get('redmine', 'key'))
+
     try:
         redmine.auth()
     except (AuthError, ConnectionError) as e:

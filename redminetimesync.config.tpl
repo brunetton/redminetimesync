@@ -1,5 +1,6 @@
 [redmine]
 url: https://your.redmine.url
+auth-type: api_key # valid values sare : 'password', 'api_key'
 key: <your_redmine_api_key_here>
 
 [default]
