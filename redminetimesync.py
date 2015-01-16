@@ -87,9 +87,8 @@ def getTimeEntries(date, config):
     for time_entry in time_entries:
         label = time_entry[0]
         if not time_entry[2]:
-            print(u'Ignoring {}: Not completed yet'.format(label))
+            print(u'\n** Warning: ignoring "{}": Not completed yet\n'.format(label))
             continue
-
         duration = (moment.date(time_entry[2], DB_TIMESTAMP_FORMAT) - moment.date(time_entry[1], DB_TIMESTAMP_FORMAT)).seconds / 3600.
         assert duration > 0, "Duration for entry {} is not >0: {}".format(label, duration)
         total_duration += duration
@@ -100,7 +99,7 @@ def getTimeEntries(date, config):
         if match:
             issue_id = match.group(1)
         else:
-            print u'** Warning : ignoring entry "{}" : not able to find issue ID'.format(label)
+            print u'\n** Warning: ignoring entry "{}" : not able to find issue ID\n'.format(label)
             continue
         print u"* [{duration}h #{id}]: {label}".format(
             duration=round(duration, 1), id=issue_id, label=label
@@ -113,13 +112,12 @@ def getTimeEntries(date, config):
             if category_name in categories_association:
                 activity_id = categories_association[category_name]
             else:
-                print_(u'** Warning : unmatched category "{}"'.format(category_name))
+                print_(u'  * Warning: unmatched category "{}"'.format(category_name))
                 if default_activity_id is not None:
                     activity_id = default_activity_id
                     print u'- assignated to default Redmine activity ID : {}'.format(default_activity_id)
                 else:
                     activity_id = None
-                print '\n'
         else:
             if default_activity_id is not None:
                 activity_id = default_activity_id
@@ -135,7 +133,7 @@ def getTimeEntries(date, config):
             'activity_id': activity_id
         })
     if total_duration > 0:
-        print "\nTotal : {}h".format(round(total_duration, 1))
+        print "\n\nTotal : {}h".format(round(total_duration, 1))
     return activities, total_duration
 
 def syncToRedmine(time_entries, date, redmine):
