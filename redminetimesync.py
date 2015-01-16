@@ -86,6 +86,10 @@ def getTimeEntries(date, config):
     total_duration = 0
     for time_entry in time_entries:
         label = time_entry[0]
+        if not time_entry[2]:
+            print(u'Ignoring {}: Not completed yet'.format(label))
+            continue
+
         duration = (moment.date(time_entry[2], DB_TIMESTAMP_FORMAT) - moment.date(time_entry[1], DB_TIMESTAMP_FORMAT)).seconds / 3600.
         assert duration > 0, "Duration for entry {} is not >0: {}".format(label, duration)
         total_duration += duration
