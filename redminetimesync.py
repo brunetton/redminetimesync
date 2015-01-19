@@ -15,7 +15,7 @@ import yaml
 from docopt import docopt    # http://docopt.org/
 import moment                # https://pypi.python.org/pypi/moment
 from redmine import Redmine  # https://pypi.python.org/pypi/python-redmine
-from redmine.exceptions import AuthError, ResourceNoFieldsProvidedError
+from redmine.exceptions import AuthError, ResourceNoFieldsProvidedError, ResourceNotFoundError
 
 
 
@@ -32,8 +32,9 @@ Usage:
     {self_name} -h | --help
 
 Options:
-    -a --auto             Do not ask for manual validation for each day, sync all days in given interval
-    -n --no-date-confirm  Do not ask for manual dates interval confirmation at begining
+    -a --auto                   Do not ask for manual validation for each day, sync all days in given interval
+    -n --no-date-confirm        Do not ask for manual dates interval confirmation at begining
+    -c --check_issues_exists    Force to check that issues exists in Redmine (can be usefull when strange errors from Redmine happends)
 
 Note: start, stop and date could be :
     - a date: ("12/10", "12/10/15", ...)
@@ -48,9 +49,10 @@ def print_(string):
     print(string),  # Here the end-line coma is intended
     sys.stdout.flush()
 
-def getTimeEntries(date, config):
+def getTimeEntries(date, config, redmine, check_issues_exists=False):
     '''Reads Sqlite Redmine DB file and return an array of explicit associative array for times entries,
-    filtering out entries that do not match issue_id_regexp defined in config file
+    filtering out entries that do not match issue_id_regexp defined in config file.
+    Can also ckecks that issues exists check_issues_exists.
     Returns:
         - activities_array:
             array of dicts with 'description', 'label', 'issue_id', 'duration', 'comment', 'activity_id' keys
@@ -72,6 +74,15 @@ def getTimeEntries(date, config):
             ORDER BY start_time""", (_date,)
         )
         return dbCursor
+
+    def issue_exists(id, redmine):
+        assert id
+        issue_exists = True
+        try:
+            redmine.issue.get(id)
+        except ResourceNotFoundError:
+            issue_exists = False
+        return issue_exists
 
     db_filename = config.get('default', 'db')
     time_entries = fetchFromDatabase(db_filename, date)
@@ -124,7 +135,10 @@ def getTimeEntries(date, config):
                 activity_id = default_activity_id
             else:
                 activity_id = None
-
+        # Check if issue exists in Redmine
+        if check_issues_exists and not issue_exists(issue_id, redmine):
+            print u'\n** Warning: ignoring entry "{}": issue id "{}" doesn\'t exists in Redmine\n'.format(label, issue_id)
+            continue
         activities.append({
             'description': label,
             'label': label,
@@ -213,7 +227,8 @@ def parse_command_line_args():
         to_date = parse_date_or_days_ahead(args['<stop>'], config)
     if args['<date>']:
         for_date = parse_date_or_days_ahead(args['<date>'], config, quit_if_none=True)
-    return args, from_date, to_date, for_date
+    check_issues_exists = args['--check_issues_exists']
+    return args, from_date, to_date, for_date, check_issues_exists
 
 
 if __name__ == '__main__':
@@ -226,7 +241,7 @@ if __name__ == '__main__':
     config.read(CONFIG_FILE)
 
     # Parse command line parameters
-    args, from_date, to_date, for_date = parse_command_line_args()
+    args, from_date, to_date, for_date, check_issues_exists = parse_command_line_args()
 
     # Get prefered date format from config file to display dates
     date_format = config.get('default', 'date_formats')
@@ -304,7 +319,7 @@ if __name__ == '__main__':
         if not for_date:
             print "{s} {formatted_date} {s}".format(s='*' * 20, formatted_date=date.format(date_format))
         # Get time entries from local DB
-        time_entries, day_total = getTimeEntries(date, config)
+        time_entries, day_total = getTimeEntries(date, config, redmine, check_issues_exists)
         if not time_entries:
             print("\nNo time entries to send... have you been lazy ?\n\n\n")
             date = date.add(days=1)
