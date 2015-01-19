@@ -1,7 +1,10 @@
 [redmine]
 url: https://your.redmine.url
-auth-type: api_key # valid values sare : 'password', 'api_key'
-key: <your_redmine_api_key_here>
+# KEY
+key: <your_redmine_api_key>
+# OR LOGIN (and optionally password)
+login: <your_redmine_login>
+password: <your_redmine_password>
 
 [default]
 # Default Hamster local SQLite file

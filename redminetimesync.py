@@ -264,22 +264,25 @@ if __name__ == '__main__':
             print "\n"
             sys.exit()
 
-    auth_type = 'api_key'
-    if config.has_option('redmine', 'auth_type'):
-        auth_type = config.get('redmine', 'auth_type')
-
-    # Connects to Redmine
-    if auth_type == 'api_key':
-        redmine = Redmine(config.get('redmine', 'url'), key=config.get('redmine', 'key'))
-    elif auth_type == 'password':
-        user = config.get('redmine', 'user')
-        password = getpass.getpass('{} Password: '.format(user))
-        redmine = Redmine(config.get('redmine', 'url'), username=user, password=password)
-    else:
-        print('Unknown auth-type: "{}"'.format(auth_type))
-        print('Use one of: key, password.')
+    # Check that api_key or username (and eventually password) are given in config file
+    api_key = login = password = None
+    if config.has_option('redmine', 'key'):
+        api_key = config.get('redmine', 'key')
+    if config.has_option('redmine', 'login'):
+        login = config.get('redmine', 'login')
+        if config.has_option('redmine', 'password'):
+            password = config.get('redmine', 'Password')
+    if not api_key and not login:
+        print('No API key nor Redmine login found in config file.\nPlease Edit your config file.')
         sys.exit(-1)
 
+    # Connects to Redmine
+    if api_key:
+        redmine = Redmine(config.get('redmine', 'url'), key=api_key)
+    else:
+        if not password:
+            password = getpass.getpass('{}\'s password: '.format(login))
+        redmine = Redmine(config.get('redmine', 'url'), username=login, password=password)
     print_('-> Connecting to Redmine...')
 
     try:
