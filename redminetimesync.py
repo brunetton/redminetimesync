@@ -3,6 +3,7 @@
 from ConfigParser import RawConfigParser
 from requests import ConnectionError
 import datetime
+import getpass
 import sqlite3
 import math
 import os
@@ -263,9 +264,27 @@ if __name__ == '__main__':
             print "\n"
             sys.exit()
 
+    # Check that api_key or username (and eventually password) are given in config file
+    api_key = login = password = None
+    if config.has_option('redmine', 'key'):
+        api_key = config.get('redmine', 'key')
+    if config.has_option('redmine', 'login'):
+        login = config.get('redmine', 'login')
+        if config.has_option('redmine', 'password'):
+            password = config.get('redmine', 'Password')
+    if not api_key and not login:
+        print('No API key nor Redmine login found in config file.\nPlease Edit your config file.')
+        sys.exit(-1)
+
     # Connects to Redmine
+    if api_key:
+        redmine = Redmine(config.get('redmine', 'url'), key=api_key)
+    else:
+        if not password:
+            password = getpass.getpass('{}\'s password: '.format(login))
+        redmine = Redmine(config.get('redmine', 'url'), username=login, password=password)
     print_('-> Connecting to Redmine...')
-    redmine = Redmine(config.get('redmine', 'url'), key=config.get('redmine', 'key'))
+
     try:
         redmine.auth()
     except (AuthError, ConnectionError) as e:

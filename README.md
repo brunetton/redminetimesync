@@ -25,6 +25,11 @@ INSTALLATION
   nb: you can find your API key on your Redmine account page (/my/account) when logged in, on the right-hand pane of the default layout.
   You'll have to enable Redmine REST API in Administration -> Settings -> Authentication
 
+  You can also use an user/password to login but it will ask you for the password each time it tries to sync your activities. To do so, you need to add the following to the config file:
+
+ - auth_type: password
+ - user: your username
+
 
 USAGE
 -----
