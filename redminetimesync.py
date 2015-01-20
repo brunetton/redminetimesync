@@ -15,7 +15,12 @@ import yaml
 from docopt import docopt    # http://docopt.org/
 import moment                # https://pypi.python.org/pypi/moment
 from redmine import Redmine  # https://pypi.python.org/pypi/python-redmine
-from redmine.exceptions import AuthError, ResourceNoFieldsProvidedError
+from redmine.exceptions import (
+        AuthError,
+        ResourceNoFieldsProvidedError,
+        ResourceNotFoundError,
+        ServerError
+    )
 
 
 
@@ -139,18 +144,40 @@ def getTimeEntries(date, config):
 
 def syncToRedmine(time_entries, date, redmine):
     '''Push all given time_entries to Redmine'''
+    def issue_exists(id, redmine):
+        assert id
+        issue_exists = True
+        try:
+            redmine.issue.get(id)
+        except ResourceNotFoundError:
+            issue_exists = False
+        return issue_exists
+
     print_("-> Sending entries")
     try:
         for time_entry_infos in time_entries:
-            # Send this activity to Redmine
-            time_entry = redmine.time_entry.create(
-                spent_on=date.date,  # converts Moment date to Datetime
-                issue_id=time_entry_infos['issue_id'],
-                hours=time_entry_infos['duration'],
-                activity_id=time_entry_infos['activity_id'],
-                comments=time_entry_infos['comment']
-            )
             print_('.')
+            try:
+                issue_id=time_entry_infos['issue_id']
+                # Send this activity to Redmine
+                time_entry = redmine.time_entry.create(
+                    spent_on=date.date,  # converts Moment date to Datetime
+                    issue_id=issue_id,
+                    hours=time_entry_infos['duration'],
+                    activity_id=time_entry_infos['activity_id'],
+                    comments=time_entry_infos['comment']
+                )
+            except ServerError:
+                # Error 500
+                # Check that issue id exists (may be a cause of 500 error on some Redmine versions)
+                print
+                if not issue_exists(issue_id, redmine):
+                    print "** ERROR ** Internal server error received from Redmine. "\
+                        "This is probably because issue id {} doesn't exists ?".format(issue_id)
+                else:
+                    print "** ERROR ** Internal server error received from Redmine !"
+                print "\nLast time entry was:\n{}".format(pformat(time_entry_infos))
+                sys.exit(-1)
     except ConnectionError as e:
         print "Connection Error: {}".format(e.message)
     print "\n"
