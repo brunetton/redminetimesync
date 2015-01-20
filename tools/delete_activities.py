@@ -11,12 +11,12 @@ import moment                # https://pypi.python.org/pypi/moment
 from redmine import Redmine  # https://pypi.python.org/pypi/python-redmine
 from redmine.exceptions import AuthError
 
-sys.path.append('..')
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from lib import common
 from lib.common import print_
 
 
-CONFIG_FILE = '../redminetimesync.config'
+CONFIG_FILE = os.path.join(os.path.dirname(__file__), '../redminetimesync.config')
 
 DOC = '''
 Tool for mass activities delete
