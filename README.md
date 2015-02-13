@@ -11,13 +11,25 @@ PREREQUISITES
 * Redmine API Key (see below)
 * Python installed your local machine
 
-
 INSTALLATION
 ------------
 
-1. Clone the repository
+### Install needed Python packages
 
-2. Copy `redminetimesync.config.tpl` to `redminetimesync.config` : it's an INI-like file that needs two parameters:
+#### Using Pypi :
+
+    pip install docopt
+    pip install moment
+    pip install python-redmine
+    pip install pyyaml
+
+### Clone the repository
+
+    git clone git@github.com:brunetton/redminetimesync.git
+
+### Prepare config files
+
+Copy `redminetimesync.config.tpl` to `redminetimesync.config` : it's an INI-like file that needs two parameters:
 
  - url: your Redmine public url
  - key: your Redmine API key

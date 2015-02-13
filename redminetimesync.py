@@ -10,7 +10,6 @@ import os
 from pprint import pformat
 import re
 import sys
-import yaml
 
 from docopt import docopt    # http://docopt.org/
 import moment                # https://pypi.python.org/pypi/moment
@@ -21,6 +20,7 @@ from redmine.exceptions import (
         ResourceNotFoundError,
         ServerError
     )
+import yaml
 
 
 sys.path.append('.')
