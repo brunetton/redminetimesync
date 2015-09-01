@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 from ConfigParser import RawConfigParser
 from requests import ConnectionError
@@ -155,18 +156,20 @@ def syncToRedmine(time_entries, date, redmine):
 
     print_("-> Sending entries")
     try:
+        time_entry = None
         for time_entry_infos in time_entries:
             print_('.')
+            issue_id = time_entry_infos['issue_id']
+            time_entry_to_send = {
+                'spent_on': date.date,  # converts Moment date to Datetime
+                'issue_id': issue_id,
+                'hours': time_entry_infos['duration'],
+                'activity_id': time_entry_infos['activity_id'],
+                'comments': time_entry_infos['comment']
+            }
             try:
-                issue_id=time_entry_infos['issue_id']
                 # Send this activity to Redmine
-                time_entry = redmine.time_entry.create(
-                    spent_on=date.date,  # converts Moment date to Datetime
-                    issue_id=issue_id,
-                    hours=time_entry_infos['duration'],
-                    activity_id=time_entry_infos['activity_id'],
-                    comments=time_entry_infos['comment']
-                )
+                redmine.time_entry.create(**time_entry_to_send)
             except ServerError:
                 # Error 500
                 # Check that issue id exists (may be a cause of 500 error on some Redmine versions)
@@ -176,7 +179,7 @@ def syncToRedmine(time_entries, date, redmine):
                         "This is probably because issue id {} doesn't exists ?".format(issue_id)
                 else:
                     print "** ERROR ** Internal server error received from Redmine !"
-                print "\nLast time entry was:\n{}".format(pformat(time_entry_infos))
+                print "\nLast time entry was:\n{}".format(pformat(time_entry_to_send))
                 sys.exit(-1)
     except ConnectionError as e:
         print "Connection Error: {}".format(e.message)
