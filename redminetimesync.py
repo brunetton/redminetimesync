@@ -161,7 +161,7 @@ def syncToRedmine(time_entries, date, redmine):
             print_('.')
             issue_id = time_entry_infos['issue_id']
             time_entry_to_send = {
-                'spent_on': date.date,  # converts Moment date to Datetime
+                'spent_on': date.date.date(),  # converts Moment date to Date
                 'issue_id': issue_id,
                 'hours': time_entry_infos['duration'],
                 'activity_id': time_entry_infos['activity_id'],
