@@ -3,6 +3,7 @@ WHAT IS THIS?
 
 This is meant to help people (like me) that use both [Hamster applet][1] (Gnome Time Tracker) and [Redmine][2] to keep trace of activities done.
 
+**See also https://github.com/brunetton/GitlabTimesync for the same script using Gitlab**
 
 PREREQUISITES
 -------------
